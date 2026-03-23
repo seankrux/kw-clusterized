@@ -47,3 +47,7 @@ vercel
 ## License
 
 MIT
+
+---
+
+Made with 💛 by Sean G

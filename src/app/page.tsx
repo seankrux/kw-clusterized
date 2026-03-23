@@ -58,6 +58,11 @@ export default function Home() {
             <p className="text-slate-600 text-sm">All processing happens in your browser. Your data never leaves your device</p>
           </div>
         </div>
+
+        {/* Footer */}
+        <footer className="text-center mt-16 pb-8 text-slate-500 text-sm">
+          Made with 💛 by Sean G
+        </footer>
       </div>
     </main>
   );
