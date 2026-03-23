@@ -1,31 +1,31 @@
-# :mag: Keyword Clustering Tool
+<h1 align="center">🔍 Keyword Clustering Tool</h1>
+<p align="center"><strong>Group keywords into topic clusters automatically using semantic similarity.</strong></p>
 
-**Group keywords into topic clusters automatically using semantic similarity.**
+<p align="center">
+  <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js" alt="Next.js" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" /></a>
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
+</p>
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+---
 
-Keyword Clustering Tool helps SEO professionals organize keyword lists into meaningful topic clusters. Paste or upload your keywords, get color-coded clusters grouped by semantic similarity, and export the results to CSV for content planning.
+## Preview
 
-## Features
+> No deployed URL yet — run locally to see the clustering in action.
 
-- **Paste or Upload Keywords** - Supports comma-separated, newline-separated, CSV, and TXT formats
-- **Semantic Clustering** - Groups keywords by word overlap and Jaccard similarity, not just exact matches
-- **Visual Cluster View** - Color-coded cluster cards for quick scanning
-- **CSV Export** - Download cluster assignments for use in spreadsheets and content plans
-- **Client-Side Processing** - All analysis runs in the browser; your data never leaves your device
-- **Instant Results** - No server round-trips needed for clustering
+---
 
-## Quick Start
+## Key Features
 
-```bash
-npm install
-npm run dev
-```
+- 📋 **Paste or Upload** — Supports comma-separated, newline, CSV, and TXT input
+- 🧠 **Semantic Clustering** — Groups by word overlap and Jaccard similarity
+- 🎨 **Color-Coded Clusters** — Visual cluster cards for quick scanning
+- 📥 **CSV Export** — Download cluster assignments for content planning
+- 🔒 **Client-Side Only** — All analysis runs in the browser; data never leaves your device
+- ⚡ **Instant Results** — No server round-trips needed
 
-Open [http://localhost:3000](http://localhost:3000)
+---
 
 ## Tech Stack
 
@@ -35,18 +35,35 @@ Open [http://localhost:3000](http://localhost:3000)
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS 3 |
 | CSV Parsing | PapaParse |
-| UI Components | Radix UI, Lucide Icons, Sonner |
-| Notifications | Sonner (toast) |
+| UI Components | Radix UI, Lucide Icons |
+| Notifications | Sonner |
 
-## Environment Variables
+---
 
-Create a `.env.local` file in the project root. These are **optional** and only needed if you enable Stripe billing:
+## Getting Started
 
-```env
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PRICE_ID=price_...
+```bash
+npm install
+npm run dev
 ```
+
+Open [http://localhost:3000](http://localhost:3000)
+
+---
+
+## Project Structure
+
+```
+src/
+  app/
+    page.tsx                  # Main page
+  components/
+    KeywordClusterer.tsx      # Core clustering UI
+  lib/
+    clustering.ts             # Clustering algorithm
+```
+
+---
 
 ## Deployment
 
@@ -54,10 +71,14 @@ STRIPE_PRICE_ID=price_...
 vercel deploy
 ```
 
+---
+
 ## License
 
-MIT
+[MIT](LICENSE)
 
 ---
 
-Made with 💛 by Sean G
+<div align="center">
+  <p>Made with 💛 by Sean G</p>
+</div>
