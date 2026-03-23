@@ -80,6 +80,29 @@ function deriveClusterLabel(keywords: string[]): string {
   return "General";
 }
 
+/**
+ * Parse a file's text content into newline-separated keywords.
+ * Supports CSV (first column) and plain text (one keyword per line).
+ */
+function parseFileContent(text: string, fileName: string): string {
+  if (fileName.endsWith(".csv")) {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    const keywords = lines
+      .map((line) => {
+        const match = line.match(/^"([^"]*)"/) || line.match(/^([^,]*)/);
+        return match ? match[1].trim() : line.trim();
+      })
+      .filter(
+        (k) =>
+          k.length > 0 &&
+          k.toLowerCase() !== "keyword" &&
+          k.toLowerCase() !== "keywords"
+      );
+    return keywords.join("\n");
+  }
+  return text.trim();
+}
+
 export default function KeywordClusterer() {
   const [input, setInput] = useState("");
   const [clusters, setClusters] = useState<Cluster[]>([]);
@@ -151,20 +174,7 @@ export default function KeywordClusterer() {
     reader.onload = (event) => {
       const text = event.target?.result as string;
       if (!text) return;
-
-      if (file.name.endsWith(".csv")) {
-        // Parse CSV: take the first column of each row
-        const lines = text.split(/\r?\n/).filter((l) => l.trim());
-        const keywords = lines.map((line) => {
-          // Handle quoted CSV fields
-          const match = line.match(/^"([^"]*)"/) || line.match(/^([^,]*)/);
-          return match ? match[1].trim() : line.trim();
-        }).filter((k) => k.length > 0 && k.toLowerCase() !== "keyword" && k.toLowerCase() !== "keywords");
-        setInput(keywords.join("\n"));
-      } else {
-        // Plain text: one keyword per line
-        setInput(text.trim());
-      }
+      setInput(parseFileContent(text, file.name));
     };
     reader.readAsText(file);
 
@@ -184,17 +194,7 @@ export default function KeywordClusterer() {
     reader.onload = (event) => {
       const text = event.target?.result as string;
       if (!text) return;
-
-      if (file.name.endsWith(".csv")) {
-        const lines = text.split(/\r?\n/).filter((l) => l.trim());
-        const keywords = lines.map((line) => {
-          const match = line.match(/^"([^"]*)"/) || line.match(/^([^,]*)/);
-          return match ? match[1].trim() : line.trim();
-        }).filter((k) => k.length > 0 && k.toLowerCase() !== "keyword" && k.toLowerCase() !== "keywords");
-        setInput(keywords.join("\n"));
-      } else {
-        setInput(text.trim());
-      }
+      setInput(parseFileContent(text, file.name));
     };
     reader.readAsText(file);
   }, []);

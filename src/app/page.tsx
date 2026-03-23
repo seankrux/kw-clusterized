@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import KeywordClusterer from "@/components/KeywordClusterer";
 
 export const metadata: Metadata = {
