@@ -62,6 +62,39 @@ function deriveClusterLabel(keywords: string[]): string {
     "online", "tool", "tools", "tips", "guide", "2024", "2025", "2026",
   ]);
 
+  // For single-keyword clusters, extract the most descriptive bigram or words
+  if (keywords.length === 1) {
+    const words = keywords[0].toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
+    if (words.length >= 2) {
+      return (words[0] + " " + words[1]).replace(/^\w/, (c) => c.toUpperCase());
+    }
+    if (words.length === 1) {
+      return words[0].replace(/^\w/, (c) => c.toUpperCase());
+    }
+    // If all words were stop words, use the first two raw words
+    const rawWords = keywords[0].toLowerCase().split(/\s+/).filter((w) => w.length > 1);
+    if (rawWords.length >= 2) {
+      return (rawWords[0] + " " + rawWords[1]).replace(/^\w/, (c) => c.toUpperCase());
+    }
+    return keywords[0].replace(/^\w/, (c) => c.toUpperCase());
+  }
+
+  // For multi-keyword clusters: find the most common bigram (natural phrase)
+  const bigramFreq: Record<string, number> = {};
+  for (const kw of keywords) {
+    const words = kw.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
+    for (let i = 0; i < words.length - 1; i++) {
+      const bigram = words[i] + " " + words[i + 1];
+      bigramFreq[bigram] = (bigramFreq[bigram] || 0) + 1;
+    }
+  }
+
+  const sortedBigrams = Object.entries(bigramFreq).sort((a, b) => b[1] - a[1]);
+  if (sortedBigrams.length > 0 && sortedBigrams[0][1] >= 2) {
+    return sortedBigrams[0][0].replace(/^\w/, (c) => c.toUpperCase());
+  }
+
+  // Fallback: most common single words
   const freq: Record<string, number> = {};
   for (const kw of keywords) {
     const words = kw.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
@@ -72,9 +105,14 @@ function deriveClusterLabel(keywords: string[]): string {
 
   const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
   if (sorted.length >= 2) {
-    return (sorted[0][0] + " " + sorted[1][0]).replace(/^\w/, (c) => c.toUpperCase());
+    // Use two words when the top word is common enough in the cluster
+    const topCount = sorted[0][1];
+    if (topCount >= 2 || keywords.length <= 3) {
+      return (sorted[0][0] + " " + sorted[1][0]).replace(/^\w/, (c) => c.toUpperCase());
+    }
+    return sorted[0][0].replace(/^\w/, (c) => c.toUpperCase());
   }
-  if (sorted.length === 1) {
+  if (sorted.length >= 1) {
     return sorted[0][0].replace(/^\w/, (c) => c.toUpperCase());
   }
   return "General";
