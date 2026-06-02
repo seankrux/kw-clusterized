@@ -1,30 +1,221 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { clusterKeywords } from "@/lib/clustering";
+
+interface KeywordRow {
+  keyword: string;
+  volume?: number;
+  difficulty?: number;
+}
 
 interface Cluster {
   id: number;
   label: string;
-  keywords: string[];
-  color: string;
-  textColor: string;
+  keywords: KeywordRow[];
 }
 
-const CLUSTER_STYLES = [
-  { bg: "from-violet-500/20 to-violet-500/5", border: "border-violet-500/30", text: "text-violet-300", badge: "bg-violet-500/20 text-violet-300 border-violet-500/30", pill: "bg-violet-500/10 text-violet-200 border-violet-500/20" },
-  { bg: "from-emerald-500/20 to-emerald-500/5", border: "border-emerald-500/30", text: "text-emerald-300", badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30", pill: "bg-emerald-500/10 text-emerald-200 border-emerald-500/20" },
-  { bg: "from-sky-500/20 to-sky-500/5", border: "border-sky-500/30", text: "text-sky-300", badge: "bg-sky-500/20 text-sky-300 border-sky-500/30", pill: "bg-sky-500/10 text-sky-200 border-sky-500/20" },
-  { bg: "from-amber-500/20 to-amber-500/5", border: "border-amber-500/30", text: "text-amber-300", badge: "bg-amber-500/20 text-amber-300 border-amber-500/30", pill: "bg-amber-500/10 text-amber-200 border-amber-500/20" },
-  { bg: "from-rose-500/20 to-rose-500/5", border: "border-rose-500/30", text: "text-rose-300", badge: "bg-rose-500/20 text-rose-300 border-rose-500/30", pill: "bg-rose-500/10 text-rose-200 border-rose-500/20" },
-  { bg: "from-teal-500/20 to-teal-500/5", border: "border-teal-500/30", text: "text-teal-300", badge: "bg-teal-500/20 text-teal-300 border-teal-500/30", pill: "bg-teal-500/10 text-teal-200 border-teal-500/20" },
-  { bg: "from-indigo-500/20 to-indigo-500/5", border: "border-indigo-500/30", text: "text-indigo-300", badge: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30", pill: "bg-indigo-500/10 text-indigo-200 border-indigo-500/20" },
-  { bg: "from-orange-500/20 to-orange-500/5", border: "border-orange-500/30", text: "text-orange-300", badge: "bg-orange-500/20 text-orange-300 border-orange-500/30", pill: "bg-orange-500/10 text-orange-200 border-orange-500/20" },
-  { bg: "from-cyan-500/20 to-cyan-500/5", border: "border-cyan-500/30", text: "text-cyan-300", badge: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30", pill: "bg-cyan-500/10 text-cyan-200 border-cyan-500/20" },
-  { bg: "from-fuchsia-500/20 to-fuchsia-500/5", border: "border-fuchsia-500/30", text: "text-fuchsia-300", badge: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30", pill: "bg-fuchsia-500/10 text-fuchsia-200 border-fuchsia-500/20" },
+const CLUSTER_COLORS = [
+  {
+    bg: "from-violet-500/20 to-violet-500/5",
+    border: "border-violet-500/30",
+    text: "text-violet-300",
+    pill: "bg-violet-500/10 text-violet-200 border border-violet-500/20",
+  },
+  {
+    bg: "from-emerald-500/20 to-emerald-500/5",
+    border: "border-emerald-500/30",
+    text: "text-emerald-300",
+    pill: "bg-emerald-500/10 text-emerald-200 border border-emerald-500/20",
+  },
+  {
+    bg: "from-sky-500/20 to-sky-500/5",
+    border: "border-sky-500/30",
+    text: "text-sky-300",
+    pill: "bg-sky-500/10 text-sky-200 border border-sky-500/20",
+  },
+  {
+    bg: "from-amber-500/20 to-amber-500/5",
+    border: "border-amber-500/30",
+    text: "text-amber-300",
+    pill: "bg-amber-500/10 text-amber-200 border border-amber-500/20",
+  },
+  {
+    bg: "from-rose-500/20 to-rose-500/5",
+    border: "border-rose-500/30",
+    text: "text-rose-300",
+    pill: "bg-rose-500/10 text-rose-200 border border-rose-500/20",
+  },
+  {
+    bg: "from-teal-500/20 to-teal-500/5",
+    border: "border-teal-500/30",
+    text: "text-teal-300",
+    pill: "bg-teal-500/10 text-teal-200 border border-teal-500/20",
+  },
+  {
+    bg: "from-indigo-500/20 to-indigo-500/5",
+    border: "border-indigo-500/30",
+    text: "text-indigo-300",
+    pill: "bg-indigo-500/10 text-indigo-200 border border-indigo-500/20",
+  },
+  {
+    bg: "from-orange-500/20 to-orange-500/5",
+    border: "border-orange-500/30",
+    text: "text-orange-300",
+    pill: "bg-orange-500/10 text-orange-200 border border-orange-500/20",
+  },
+  {
+    bg: "from-cyan-500/20 to-cyan-500/5",
+    border: "border-cyan-500/30",
+    text: "text-cyan-300",
+    pill: "bg-cyan-500/10 text-cyan-200 border border-cyan-500/20",
+  },
+  {
+    bg: "from-fuchsia-500/20 to-fuchsia-500/5",
+    border: "border-fuchsia-500/30",
+    text: "text-fuchsia-300",
+    pill: "bg-fuchsia-500/10 text-fuchsia-200 border border-fuchsia-500/20",
+  },
 ];
 
-const DEMO_KEYWORDS = `best seo tools 2024
+const STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "for",
+  "from",
+  "has",
+  "he",
+  "in",
+  "is",
+  "it",
+  "its",
+  "of",
+  "on",
+  "that",
+  "the",
+  "to",
+  "was",
+  "will",
+  "with",
+  "how",
+  "what",
+  "when",
+  "where",
+  "who",
+  "why",
+  "best",
+  "top",
+  "vs",
+  "versus",
+  "or",
+  "new",
+  "old",
+  "free",
+  "online",
+  "tool",
+  "tools",
+  "tips",
+  "guide",
+  "2024",
+  "2025",
+  "2026",
+]);
+
+function deriveLabel(rows: KeywordRow[]): string {
+  const keywords = rows.map((r) => r.keyword);
+  if (keywords.length === 1) {
+    const words = keywords[0]
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+    if (words.length >= 2)
+      return (words[0] + " " + words[1]).replace(/^\w/, (c) => c.toUpperCase());
+    if (words.length === 1)
+      return words[0].replace(/^\w/, (c) => c.toUpperCase());
+    return keywords[0].replace(/^\w/, (c) => c.toUpperCase());
+  }
+  const bigramFreq: Record<string, number> = {};
+  for (const kw of keywords) {
+    const words = kw
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+    for (let i = 0; i < words.length - 1; i++) {
+      const b = words[i] + " " + words[i + 1];
+      bigramFreq[b] = (bigramFreq[b] || 0) + 1;
+    }
+  }
+  const topBigram = Object.entries(bigramFreq).sort((a, b) => b[1] - a[1])[0];
+  if (topBigram && topBigram[1] >= 2)
+    return topBigram[0].replace(/^\w/, (c) => c.toUpperCase());
+  const freq: Record<string, number> = {};
+  for (const kw of keywords) {
+    kw.toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !STOP_WORDS.has(w))
+      .forEach((w) => {
+        freq[w] = (freq[w] || 0) + 1;
+      });
+  }
+  const top = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+  if (top.length >= 2)
+    return (top[0][0] + " " + top[1][0]).replace(/^\w/, (c) => c.toUpperCase());
+  if (top.length === 1) return top[0][0].replace(/^\w/, (c) => c.toUpperCase());
+  return "General";
+}
+
+function parseFileContent(text: string, fileName: string): KeywordRow[] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (fileName.endsWith(".csv")) {
+    const header = lines[0]?.toLowerCase() || "";
+    const hasHeader = header.includes("keyword");
+    const startIdx = hasHeader ? 1 : 0;
+    const volIdx = header
+      .split(",")
+      .findIndex((h) => h.includes("volume") || h.includes("vol"));
+    const diffIdx = header
+      .split(",")
+      .findIndex((h) => h.includes("difficult") || h.includes("kd"));
+    return lines
+      .slice(startIdx)
+      .map((line) => {
+        const cols = line.split(",").map((c) => c.replace(/^"|"$/g, "").trim());
+        const keyword = cols[0];
+        if (!keyword || keyword.toLowerCase() === "keyword") return null;
+        return {
+          keyword,
+          volume:
+            volIdx >= 0 && cols[volIdx]
+              ? Number(cols[volIdx].replace(/[^0-9]/g, "")) || undefined
+              : undefined,
+          difficulty:
+            diffIdx >= 0 && cols[diffIdx]
+              ? Number(cols[diffIdx].replace(/[^0-9]/g, "")) || undefined
+              : undefined,
+        };
+      })
+      .filter((r): r is KeywordRow => r !== null && r.keyword.length > 0);
+  }
+  return lines
+    .map((l) => ({ keyword: l.trim() }))
+    .filter((r) => r.keyword.length > 0);
+}
+
+function parseTextInput(text: string): KeywordRow[] {
+  return text
+    .split(/[\n,]/)
+    .map((k) => k.trim().toLowerCase())
+    .filter((k) => k.length > 0)
+    .map((k) => ({ keyword: k }));
+}
+
+const DEMO = `best seo tools 2024
 seo software for small business
 free seo tools online
 keyword research tool
@@ -43,103 +234,7 @@ local seo optimization
 google my business tips
 local search ranking factors
 technical seo audit
-site speed optimization
-mobile friendly website test
-seo audit tool free
-website analysis tool
-competitor analysis seo`;
-
-/**
- * Derive a human-readable cluster label from the keywords in a cluster.
- * Picks the most frequently occurring significant word across all keywords.
- */
-function deriveClusterLabel(keywords: string[]): string {
-  const stopWords = new Set([
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
-    "has", "he", "in", "is", "it", "its", "of", "on", "that", "the",
-    "to", "was", "will", "with", "how", "what", "when", "where", "who",
-    "why", "best", "top", "vs", "versus", "or", "new", "old", "free",
-    "online", "tool", "tools", "tips", "guide", "2024", "2025", "2026",
-  ]);
-
-  // For single-keyword clusters, extract the most descriptive bigram or words
-  if (keywords.length === 1) {
-    const words = keywords[0].toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
-    if (words.length >= 2) {
-      return (words[0] + " " + words[1]).replace(/^\w/, (c) => c.toUpperCase());
-    }
-    if (words.length === 1) {
-      return words[0].replace(/^\w/, (c) => c.toUpperCase());
-    }
-    // If all words were stop words, use the first two raw words
-    const rawWords = keywords[0].toLowerCase().split(/\s+/).filter((w) => w.length > 1);
-    if (rawWords.length >= 2) {
-      return (rawWords[0] + " " + rawWords[1]).replace(/^\w/, (c) => c.toUpperCase());
-    }
-    return keywords[0].replace(/^\w/, (c) => c.toUpperCase());
-  }
-
-  // For multi-keyword clusters: find the most common bigram (natural phrase)
-  const bigramFreq: Record<string, number> = {};
-  for (const kw of keywords) {
-    const words = kw.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
-    for (let i = 0; i < words.length - 1; i++) {
-      const bigram = words[i] + " " + words[i + 1];
-      bigramFreq[bigram] = (bigramFreq[bigram] || 0) + 1;
-    }
-  }
-
-  const sortedBigrams = Object.entries(bigramFreq).sort((a, b) => b[1] - a[1]);
-  if (sortedBigrams.length > 0 && sortedBigrams[0][1] >= 2) {
-    return sortedBigrams[0][0].replace(/^\w/, (c) => c.toUpperCase());
-  }
-
-  // Fallback: most common single words
-  const freq: Record<string, number> = {};
-  for (const kw of keywords) {
-    const words = kw.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
-    for (const w of words) {
-      freq[w] = (freq[w] || 0) + 1;
-    }
-  }
-
-  const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-  if (sorted.length >= 2) {
-    // Use two words when the top word is common enough in the cluster
-    const topCount = sorted[0][1];
-    if (topCount >= 2 || keywords.length <= 3) {
-      return (sorted[0][0] + " " + sorted[1][0]).replace(/^\w/, (c) => c.toUpperCase());
-    }
-    return sorted[0][0].replace(/^\w/, (c) => c.toUpperCase());
-  }
-  if (sorted.length >= 1) {
-    return sorted[0][0].replace(/^\w/, (c) => c.toUpperCase());
-  }
-  return "General";
-}
-
-/**
- * Parse a file's text content into newline-separated keywords.
- * Supports CSV (first column) and plain text (one keyword per line).
- */
-function parseFileContent(text: string, fileName: string): string {
-  if (fileName.endsWith(".csv")) {
-    const lines = text.split(/\r?\n/).filter((l) => l.trim());
-    const keywords = lines
-      .map((line) => {
-        const match = line.match(/^"([^"]*)"/) || line.match(/^([^,]*)/);
-        return match ? match[1].trim() : line.trim();
-      })
-      .filter(
-        (k) =>
-          k.length > 0 &&
-          k.toLowerCase() !== "keyword" &&
-          k.toLowerCase() !== "keywords"
-      );
-    return keywords.join("\n");
-  }
-  return text.trim();
-}
+site speed optimization`;
 
 export default function KeywordClusterer() {
   const [input, setInput] = useState("");
@@ -148,381 +243,561 @@ export default function KeywordClusterer() {
   const [error, setError] = useState("");
   const [processingTime, setProcessingTime] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [threshold, setThreshold] = useState(0.2);
+  const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [mergeMode, setMergeMode] = useState(false);
+  const [mergeSelected, setMergeSelected] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const keywordCount = input.split(/[\n,]/).filter((k) => k.trim().length > 0).length;
+  const kwCount = input
+    .split(/[\n,]/)
+    .filter((k) => k.trim().length > 0).length;
 
   const handleCluster = useCallback(() => {
     setError("");
     setLoading(true);
     setProcessingTime(null);
+    setSearch("");
+    setMergeMode(false);
+    setMergeSelected(new Set());
 
-    // Use requestAnimationFrame to let the loading state render before blocking
     requestAnimationFrame(() => {
-      const startTime = performance.now();
+      const start = performance.now();
       try {
-        const keywords = input
-          .split(/[\n,]/)
-          .map((k) => k.trim().toLowerCase())
-          .filter((k) => k.length > 0);
-
-        // Deduplicate
-        const unique = Array.from(new Set(keywords));
+        const rows = parseTextInput(input);
+        const unique = Array.from(
+          new Map(rows.map((r) => [r.keyword, r])).values(),
+        );
 
         if (unique.length === 0) {
-          setError("Please enter some keywords to cluster.");
+          setError("Please enter some keywords.");
           setLoading(false);
           return;
         }
-
         if (unique.length < 2) {
-          setError("Please enter at least 2 keywords to form clusters.");
+          setError("Please enter at least 2 keywords.");
           setLoading(false);
           return;
         }
 
-        const grouped = clusterKeywords(unique);
+        const grouped = clusterKeywords(
+          unique.map((r) => r.keyword),
+          threshold,
+        );
+        const kwMap = new Map(unique.map((r) => [r.keyword, r]));
 
-        const clustersWithMeta: Cluster[] = grouped.map((kws, index) => {
-          const style = CLUSTER_STYLES[index % CLUSTER_STYLES.length];
-          return {
-            id: index + 1,
-            label: deriveClusterLabel(kws),
-            keywords: kws,
-            color: style.bg,
-            textColor: style.text,
-          };
+        const built: Cluster[] = grouped.map((kws, i) => {
+          const kwRows = kws.map((k) => kwMap.get(k) || { keyword: k });
+          return { id: i + 1, label: deriveLabel(kwRows), keywords: kwRows };
         });
 
-        setClusters(clustersWithMeta);
-        setProcessingTime(Math.round(performance.now() - startTime));
+        setClusters(built);
+        setProcessingTime(Math.round(performance.now() - start));
       } catch {
-        setError("Something went wrong during clustering. Please try again.");
+        setError("Something went wrong. Please try again.");
       } finally {
         setLoading(false);
       }
     });
-  }, [input]);
+  }, [input, threshold]);
 
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleFile = useCallback((file: File) => {
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (!text) return;
-      setInput(parseFileContent(text, file.name));
-    };
-    reader.readAsText(file);
-
-    // Reset file input so the same file can be uploaded again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (!text) return;
-      setInput(parseFileContent(text, file.name));
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const rows = parseFileContent(text, file.name);
+      if (rows.length === 0) {
+        setError("No keywords found in file.");
+        return;
+      }
+      setInput(rows.map((r) => r.keyword).join("\n"));
+      setError("");
     };
     reader.readAsText(file);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    },
+    [handleFile],
+  );
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleExport = useCallback(() => {
+  const handleExportCSV = useCallback(() => {
     if (clusters.length === 0) return;
-
-    const csvRows = [
-      ["Cluster ID", "Cluster Label", "Keyword"],
-      ...clusters.flatMap((cluster) =>
-        cluster.keywords.map((keyword) => [
-          cluster.id.toString(),
-          `"${cluster.label}"`,
-          `"${keyword}"`,
-        ])
+    const rows = [["Cluster", "Keyword", "Volume", "Difficulty"]];
+    clusters.forEach((c) =>
+      c.keywords.forEach((r) =>
+        rows.push([
+          c.label,
+          r.keyword,
+          r.volume != null ? String(r.volume) : "",
+          r.difficulty != null ? String(r.difficulty) : "",
+        ]),
       ),
-    ];
-
-    const csvContent = csvRows.map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "keyword-clusters.csv";
+    );
+    const csv = rows
+      .map((row) => row.map((c) => `"${c.replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(
+        new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }),
+      ),
+      download: "keyword-clusters.csv",
+    });
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
   }, [clusters]);
 
-  const handleClear = useCallback(() => {
-    setInput("");
-    setClusters([]);
-    setError("");
-    setProcessingTime(null);
-  }, []);
+  const handleExportJSON = useCallback(() => {
+    if (clusters.length === 0) return;
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(
+        new Blob([JSON.stringify(clusters, null, 2)], {
+          type: "application/json",
+        }),
+      ),
+      download: "keyword-clusters.json",
+    });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [clusters]);
 
-  const handleLoadDemo = useCallback(() => {
-    setInput(DEMO_KEYWORDS.trim());
-    setClusters([]);
-    setError("");
-    setProcessingTime(null);
-  }, []);
+  const handleRenameCommit = useCallback(
+    (id: number) => {
+      if (!editLabel.trim()) {
+        setEditingId(null);
+        return;
+      }
+      setClusters((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, label: editLabel.trim() } : c)),
+      );
+      setEditingId(null);
+    },
+    [editLabel],
+  );
 
-  const totalKeywordsInClusters = clusters.reduce((sum, c) => sum + c.keywords.length, 0);
+  const handleMerge = useCallback(() => {
+    if (mergeSelected.size < 2) return;
+    setClusters((prev) => {
+      const toMerge = prev.filter((c) => mergeSelected.has(c.id));
+      const rest = prev.filter((c) => !mergeSelected.has(c.id));
+      const merged: Cluster = {
+        id: toMerge[0].id,
+        label: toMerge[0].label,
+        keywords: toMerge.flatMap((c) => c.keywords),
+      };
+      return [merged, ...rest].map((c, i) => ({ ...c, id: i + 1 }));
+    });
+    setMergeMode(false);
+    setMergeSelected(new Set());
+  }, [mergeSelected]);
+
+  const handleSplitSingles = useCallback(() => {
+    // no-op: singles are already individual clusters; this re-clusters with tighter threshold
+    setThreshold((t) => Math.min(0.5, t + 0.05));
+    setTimeout(() => handleCluster(), 50);
+  }, [handleCluster]);
+
+  const filteredClusters = useMemo(() => {
+    if (!search) return clusters;
+    const q = search.toLowerCase();
+    return clusters
+      .map((c) => ({
+        ...c,
+        keywords: c.keywords.filter((r) => r.keyword.includes(q)),
+      }))
+      .filter(
+        (c) => c.keywords.length > 0 || c.label.toLowerCase().includes(q),
+      );
+  }, [clusters, search]);
+
+  const stats = useMemo(
+    () => ({
+      total: clusters.reduce((s, c) => s + c.keywords.length, 0),
+      clusterCount: clusters.length,
+      avgSize: clusters.length
+        ? (
+            clusters.reduce((s, c) => s + c.keywords.length, 0) /
+            clusters.length
+          ).toFixed(1)
+        : "0",
+      largest: clusters.length
+        ? Math.max(...clusters.map((c) => c.keywords.length))
+        : 0,
+    }),
+    [clusters],
+  );
 
   return (
     <div className="max-w-5xl mx-auto">
-      {/* Input Section */}
-      <div className="glass rounded-2xl p-6 md:p-8 mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-          <label className="block text-sm font-semibold text-zinc-200">
-            Enter your keywords
-            <span className="font-normal text-zinc-500 ml-1">(one per line or comma-separated)</span>
-          </label>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleLoadDemo}
-              className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors"
-            >
-              Load demo keywords
-            </button>
-            <label className="text-xs text-zinc-500 hover:text-zinc-300 font-medium cursor-pointer transition-colors flex items-center gap-1">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              Upload CSV / TXT
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.txt,.tsv"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </label>
-          </div>
-        </div>
-
-        {/* Textarea with drop zone */}
+      {/* Input card */}
+      <div className="bg-zinc-900/80 backdrop-blur-sm rounded-2xl ring-1 ring-white/10 p-6 mb-6">
         <div
-          className={`relative rounded-xl transition-all duration-200 ${
-            isDragging
-              ? "ring-2 ring-violet-500/50 bg-violet-500/5"
-              : ""
-          }`}
+          className={`relative rounded-xl transition-all ${isDragging ? "ring-2 ring-violet-500 bg-violet-500/5" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
         >
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={"best seo tools\nseo software\nfree seo tools\nkeyword research tool\nkeyword planner free\ncontent marketing strategy\n..."}
-            className="w-full h-48 p-4 bg-zinc-900/80 border border-zinc-700/50 rounded-xl focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 focus-glow resize-none font-mono text-sm text-zinc-200 placeholder:text-zinc-600 transition-all outline-none"
+            placeholder={
+              "Paste keywords here — one per line, or comma-separated.\nOr drag & drop a .csv / .txt file.\n\nCSV columns supported: keyword, volume, difficulty"
+            }
+            rows={8}
+            className="w-full p-4 bg-zinc-800/60 ring-1 ring-zinc-700 rounded-xl text-zinc-200 placeholder:text-zinc-600 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none resize-none font-mono transition-all"
           />
           {isDragging && (
-            <div className="absolute inset-0 flex items-center justify-center bg-violet-500/10 rounded-xl border-2 border-dashed border-violet-500/40">
-              <div className="text-violet-300 font-medium text-sm flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                Drop your file here
-              </div>
+            <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-violet-500/10 ring-2 ring-violet-500 pointer-events-none">
+              <p className="text-violet-300 font-semibold">
+                Drop file to import
+              </p>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-zinc-500">
-            <span className={keywordCount > 0 ? "text-zinc-300 font-medium" : ""}>
-              {keywordCount}
-            </span>{" "}
-            keyword{keywordCount !== 1 ? "s" : ""}
-            {input.length > 0 && (
-              <span className="text-zinc-600 ml-2">
-                &middot; {input.length.toLocaleString()} chars
-              </span>
-            )}
+        <div className="flex flex-wrap items-center gap-3 mt-4">
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <span>
+              {kwCount} keyword{kwCount !== 1 ? "s" : ""}
+            </span>
           </div>
-          <div className="flex items-center gap-3">
-            {input.length > 0 && (
-              <button
-                onClick={handleClear}
-                className="px-4 py-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-              >
-                Clear
-              </button>
-            )}
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            <label className="text-xs text-zinc-500 flex items-center gap-1.5">
+              Threshold
+              <input
+                type="range"
+                min="0.1"
+                max="0.5"
+                step="0.05"
+                value={threshold}
+                onChange={(e) => setThreshold(Number(e.target.value))}
+                className="w-20 accent-violet-500"
+              />
+              <span className="text-violet-400 font-mono w-8">
+                {threshold.toFixed(2)}
+              </span>
+            </label>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-2 bg-zinc-800 ring-1 ring-zinc-700 rounded-lg text-zinc-400 hover:text-zinc-200 text-sm transition-all"
+            >
+              Import file
+            </button>
+            <button
+              onClick={() => {
+                setInput(DEMO);
+                setError("");
+              }}
+              className="px-3 py-2 bg-zinc-800 ring-1 ring-zinc-700 rounded-lg text-zinc-400 hover:text-zinc-200 text-sm transition-all"
+            >
+              Load demo
+            </button>
             <button
               onClick={handleCluster}
-              disabled={loading || keywordCount < 2}
-              className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-violet-500 text-white rounded-lg hover:from-violet-500 hover:to-violet-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium text-sm shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30"
+              disabled={loading || kwCount < 2}
+              className="px-5 py-2 bg-gradient-to-r from-violet-600 to-violet-500 text-white rounded-lg hover:from-violet-500 hover:to-violet-400 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-sm transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2"
             >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin-slow h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Clustering...
-                </span>
-              ) : (
-                "Cluster Keywords"
+              {loading && (
+                <svg
+                  className="w-3.5 h-3.5 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
               )}
+              {loading ? "Clustering..." : "Cluster Keywords"}
             </button>
           </div>
         </div>
-
         {error && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm flex items-center gap-2">
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+          <div className="mt-3 p-3 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400 text-sm">
             {error}
           </div>
         )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,.txt"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFile(f);
+            e.target.value = "";
+          }}
+        />
       </div>
 
-      {/* Loading skeleton */}
-      {loading && (
-        <div className="glass rounded-2xl p-6 md:p-8 mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-6 w-40 rounded-lg animate-shimmer" />
-            <div className="h-6 w-24 rounded-lg animate-shimmer" />
-          </div>
-          <div className="h-2 rounded-full animate-shimmer mb-8" />
-          <div className="grid md:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="rounded-xl border border-zinc-800 p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="h-5 w-32 rounded-lg animate-shimmer" />
-                  <div className="h-6 w-20 rounded-full animate-shimmer" />
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {[1, 2, 3].map((j) => (
-                    <div key={j} className="h-7 rounded-md animate-shimmer" style={{ width: `${60 + j * 20}px` }} />
-                  ))}
-                </div>
+      {/* Results */}
+      {clusters.length > 0 && (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {[
+              {
+                label: "Total Keywords",
+                value: stats.total,
+                color: "text-violet-400",
+              },
+              {
+                label: "Clusters",
+                value: stats.clusterCount,
+                color: "text-emerald-400",
+              },
+              {
+                label: "Avg Cluster Size",
+                value: stats.avgSize,
+                color: "text-sky-400",
+              },
+              {
+                label: "Largest Cluster",
+                value: stats.largest,
+                color: "text-amber-400",
+              },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="bg-zinc-900/80 ring-1 ring-white/10 rounded-xl p-4 text-center"
+              >
+                <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+                <div className="text-zinc-500 text-xs mt-0.5">{s.label}</div>
               </div>
             ))}
           </div>
-        </div>
-      )}
 
-      {/* Results Section */}
-      {clusters.length > 0 && !loading && (
-        <div className="glass rounded-2xl p-6 md:p-8 animate-fade-in-up">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-xl font-bold text-zinc-100">
-                {clusters.length} Cluster{clusters.length !== 1 ? "s" : ""} Found
-              </h2>
-              <p className="text-sm text-zinc-500 mt-1">
-                {totalKeywordsInClusters} keyword{totalKeywordsInClusters !== 1 ? "s" : ""} organized into topic groups
-                {processingTime !== null && (
-                  <span className="text-zinc-600 ml-1">&middot; {processingTime}ms</span>
-                )}
-              </p>
-            </div>
+          {processingTime !== null && (
+            <p className="text-zinc-600 text-xs mb-4 text-center">
+              Clustered in {processingTime}ms using TF-IDF cosine similarity
+            </p>
+          )}
+
+          {/* Toolbar */}
+          <div className="flex flex-wrap gap-3 mb-5 items-center">
+            <input
+              type="search"
+              placeholder="Search clusters..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 min-w-[180px] px-3 py-2 bg-zinc-900/80 ring-1 ring-zinc-700 rounded-lg text-zinc-200 placeholder:text-zinc-600 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+            />
             <button
-              onClick={handleExport}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 text-zinc-200 rounded-lg hover:bg-zinc-700 border border-zinc-700 transition-colors text-sm font-medium"
+              onClick={() => {
+                setMergeMode((m) => !m);
+                setMergeSelected(new Set());
+              }}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ring-1 ${mergeMode ? "bg-violet-600 text-white ring-violet-500" : "bg-zinc-900/80 text-zinc-400 ring-zinc-700 hover:text-zinc-200"}`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              {mergeMode ? "Cancel Merge" : "Merge Clusters"}
+            </button>
+            {mergeMode && mergeSelected.size >= 2 && (
+              <button
+                onClick={handleMerge}
+                className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-500 transition-all"
+              >
+                Merge {mergeSelected.size} →
+              </button>
+            )}
+            <button
+              onClick={handleExportCSV}
+              className="px-3 py-2 bg-zinc-900/80 ring-1 ring-zinc-700 text-zinc-400 hover:text-zinc-200 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5"
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
               </svg>
-              Export CSV
+              CSV
+            </button>
+            <button
+              onClick={handleExportJSON}
+              className="px-3 py-2 bg-zinc-900/80 ring-1 ring-zinc-700 text-zinc-400 hover:text-zinc-200 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5"
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              JSON
             </button>
           </div>
 
-          {/* Stats bar */}
-          <div className="flex items-center gap-6 mb-6 px-4 py-3 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-violet-400" />
-              <span className="text-xs text-zinc-400">
-                <span className="text-zinc-200 font-semibold">{totalKeywordsInClusters}</span> keywords
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-xs text-zinc-400">
-                <span className="text-zinc-200 font-semibold">{clusters.length}</span> clusters
-              </span>
-            </div>
-            {processingTime !== null && (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-xs text-zinc-400">
-                  <span className="text-zinc-200 font-semibold">{processingTime}</span>ms
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-sky-400" />
-              <span className="text-xs text-zinc-400">
-                avg <span className="text-zinc-200 font-semibold">{Math.round(totalKeywordsInClusters / clusters.length)}</span> per cluster
-              </span>
-            </div>
-          </div>
-
-          {/* Cluster summary bar */}
-          <div className="flex gap-1 h-2 rounded-full overflow-hidden mb-8">
-            {clusters.map((cluster) => {
-              const style = CLUSTER_STYLES[(cluster.id - 1) % CLUSTER_STYLES.length];
-              const widthPercent = (cluster.keywords.length / totalKeywordsInClusters) * 100;
-              return (
-                <div
-                  key={cluster.id}
-                  className={`bg-gradient-to-r ${style.bg} transition-all rounded-full`}
-                  style={{ width: `${widthPercent}%` }}
-                  title={`${cluster.label}: ${cluster.keywords.length} keywords`}
-                />
+          {/* Clusters */}
+          <div className="space-y-4">
+            {filteredClusters.map((cluster, ci) => {
+              const style = CLUSTER_COLORS[ci % CLUSTER_COLORS.length];
+              const isSelected = mergeSelected.has(cluster.id);
+              const totalVol = cluster.keywords.reduce(
+                (s, r) => s + (r.volume || 0),
+                0,
               );
-            })}
-          </div>
+              const avgDiff = cluster.keywords.filter(
+                (r) => r.difficulty != null,
+              ).length
+                ? Math.round(
+                    cluster.keywords.reduce(
+                      (s, r) => s + (r.difficulty || 0),
+                      0,
+                    ) /
+                      cluster.keywords.filter((r) => r.difficulty != null)
+                        .length,
+                  )
+                : null;
 
-          <div className="grid md:grid-cols-2 gap-4">
-            {clusters.map((cluster, index) => {
-              const style = CLUSTER_STYLES[(cluster.id - 1) % CLUSTER_STYLES.length];
               return (
                 <div
                   key={cluster.id}
-                  className={`bg-gradient-to-br ${cluster.color} border ${style.border} rounded-xl p-5 transition-all duration-300 hover:scale-[1.01] hover:shadow-lg hover:shadow-black/20 animate-fade-in-up`}
-                  style={{ animationDelay: `${index * 60}ms` }}
+                  className={`bg-gradient-to-br ${style.bg} rounded-2xl border ${style.border} p-5 transition-all ${mergeMode ? "cursor-pointer " + (isSelected ? "ring-2 ring-violet-400" : "hover:ring-1 hover:ring-violet-500/50") : ""}`}
+                  onClick={() => {
+                    if (!mergeMode) return;
+                    setMergeSelected((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(cluster.id)) next.delete(cluster.id);
+                      else next.add(cluster.id);
+                      return next;
+                    });
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className={`font-bold ${cluster.textColor}`}>
-                      {cluster.label}
-                    </h3>
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${style.badge}`}>
-                      {cluster.keywords.length} keyword{cluster.keywords.length !== 1 ? "s" : ""}
-                    </span>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {mergeMode && (
+                        <div
+                          className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center ${isSelected ? "bg-violet-500 border-violet-500" : "border-zinc-500"}`}
+                        >
+                          {isSelected && (
+                            <svg
+                              className="w-2.5 h-2.5 text-white"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      )}
+                      {editingId === cluster.id ? (
+                        <input
+                          autoFocus
+                          value={editLabel}
+                          onChange={(e) => setEditLabel(e.target.value)}
+                          onBlur={() => handleRenameCommit(cluster.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter")
+                              handleRenameCommit(cluster.id);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                          className="bg-zinc-800 text-zinc-100 text-sm font-semibold px-2 py-0.5 rounded focus:outline-none focus:ring-1 focus:ring-violet-500 min-w-0"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <h3
+                          className={`font-semibold text-sm truncate ${style.text}`}
+                        >
+                          {cluster.label}
+                        </h3>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingId(cluster.id);
+                          setEditLabel(cluster.label);
+                        }}
+                        className="text-zinc-600 hover:text-zinc-400 transition-colors flex-shrink-0"
+                        title="Rename cluster"
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0 text-xs text-zinc-500">
+                      {totalVol > 0 && (
+                        <span title="Total search volume">
+                          📊 {totalVol.toLocaleString()} vol
+                        </span>
+                      )}
+                      {avgDiff != null && (
+                        <span title="Avg keyword difficulty">
+                          🎯 {avgDiff} KD
+                        </span>
+                      )}
+                      <span
+                        className={`font-semibold px-2 py-0.5 rounded-full ${style.pill}`}
+                      >
+                        {cluster.keywords.length} kw
+                      </span>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {cluster.keywords.map((keyword, idx) => (
+                    {cluster.keywords.map((row) => (
                       <span
-                        key={idx}
-                        className={`px-2.5 py-1 rounded-md text-sm border backdrop-blur-sm transition-colors hover:bg-white/5 ${style.pill}`}
+                        key={row.keyword}
+                        className={`text-xs px-2.5 py-1 rounded-full ${style.pill} flex items-center gap-1`}
                       >
-                        {keyword}
+                        {row.keyword}
+                        {row.volume != null && (
+                          <span className="text-zinc-500 text-[10px]">
+                            · {row.volume.toLocaleString()}
+                          </span>
+                        )}
+                        {row.difficulty != null && (
+                          <span className="text-zinc-500 text-[10px]">
+                            · {row.difficulty}kd
+                          </span>
+                        )}
                       </span>
                     ))}
                   </div>
@@ -530,23 +805,42 @@ export default function KeywordClusterer() {
               );
             })}
           </div>
-        </div>
+        </>
       )}
 
       {/* Empty state */}
       {clusters.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        <div className="bg-zinc-900/50 rounded-2xl ring-1 ring-white/5 p-12 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-500/10 ring-1 ring-violet-500/20 rounded-2xl mb-4">
+            <svg
+              className="w-8 h-8 text-violet-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              />
             </svg>
           </div>
-          <p className="text-zinc-500 text-sm">
-            Enter keywords above and click <span className="font-medium text-zinc-300">Cluster Keywords</span> to get started
+          <h3 className="text-lg font-semibold text-zinc-50 mb-1">
+            Ready to cluster
+          </h3>
+          <p className="text-zinc-500 text-sm max-w-sm mx-auto">
+            Paste keywords above or load the demo, then click Cluster Keywords.
           </p>
-          <p className="text-zinc-600 text-xs mt-2">
-            Or try the <button onClick={handleLoadDemo} className="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">demo keywords</button> to see it in action
-          </p>
+          <button
+            onClick={() => {
+              setInput(DEMO);
+              setError("");
+            }}
+            className="mt-4 px-4 py-2 bg-violet-500/10 text-violet-400 ring-1 ring-violet-500/20 rounded-lg text-sm hover:bg-violet-500/20 transition-all"
+          >
+            Load demo keywords →
+          </button>
         </div>
       )}
     </div>

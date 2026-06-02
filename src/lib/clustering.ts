@@ -1,137 +1,174 @@
-/**
- * Keyword clustering using text similarity.
- * Groups keywords that share common significant words using
- * Jaccard similarity with single-linkage clustering.
- */
-
-// Only remove truly empty function words
 const STOP_WORDS = new Set([
-  "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
-  "has", "he", "in", "is", "it", "its", "of", "on", "that", "the",
-  "to", "was", "will", "with", "how", "what", "when", "where", "who",
-  "why", "vs", "versus", "or", "do", "does", "did", "not", "no",
-  "but", "if", "so", "than", "too", "very", "can", "just", "should",
-  "now", "your", "you", "my", "our", "their", "his", "her",
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "for",
+  "from",
+  "has",
+  "he",
+  "in",
+  "is",
+  "it",
+  "its",
+  "of",
+  "on",
+  "that",
+  "the",
+  "to",
+  "was",
+  "will",
+  "with",
+  "how",
+  "what",
+  "when",
+  "where",
+  "who",
+  "why",
+  "vs",
+  "versus",
+  "or",
+  "do",
+  "does",
+  "did",
+  "not",
+  "no",
+  "but",
+  "if",
+  "so",
+  "than",
+  "too",
+  "very",
+  "can",
+  "just",
+  "should",
+  "now",
+  "your",
+  "you",
+  "my",
+  "our",
+  "their",
+  "his",
+  "her",
 ]);
 
-/**
- * Extract significant words from a keyword phrase.
- */
-function extractWords(keyword: string): string[] {
-  return keyword
+function tokenize(kw: string): string[] {
+  return kw
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
-    .filter((word) => word.length > 1 && !STOP_WORDS.has(word));
+    .filter((w) => w.length > 1 && !STOP_WORDS.has(w));
 }
 
-/**
- * Calculate Jaccard similarity between two keywords based on word overlap.
- */
-function calculateSimilarity(keyword1: string, keyword2: string): number {
-  const words1 = extractWords(keyword1);
-  const words2 = extractWords(keyword2);
-
-  if (words1.length === 0 || words2.length === 0) {
-    const k1 = keyword1.toLowerCase();
-    const k2 = keyword2.toLowerCase();
-    return k1.includes(k2) || k2.includes(k1) ? 0.5 : 0;
+function buildTfIdf(keywords: string[]): Map<string, Map<string, number>> {
+  const tokenized = keywords.map(tokenize);
+  const df = new Map<string, number>();
+  for (const toks of tokenized) {
+    const uniq = new Set(toks);
+    uniq.forEach((t) => df.set(t, (df.get(t) || 0) + 1));
   }
-
-  const set1 = new Set(words1);
-  const set2 = new Set(words2);
-
-  // Count intersection
-  let intersectionSize = 0;
-  Array.from(set1).forEach((word) => {
-    if (set2.has(word)) intersectionSize++;
+  const n = keywords.length;
+  const vectors = new Map<string, Map<string, number>>();
+  keywords.forEach((kw, i) => {
+    const toks = tokenized[i];
+    const tf = new Map<string, number>();
+    toks.forEach((t) => tf.set(t, (tf.get(t) || 0) + 1));
+    const vec = new Map<string, number>();
+    tf.forEach((count, term) => {
+      const idf = Math.log((n + 1) / ((df.get(term) || 0) + 1)) + 1;
+      vec.set(term, (count / toks.length) * idf);
+    });
+    vectors.set(kw, vec);
   });
-  const unionSize = new Set([...Array.from(set1), ...Array.from(set2)]).size;
-
-  if (unionSize === 0) return 0;
-
-  const jaccard = intersectionSize / unionSize;
-
-  // Bonus: if any shared word is 4+ chars (semantically meaningful), boost the score.
-  // This helps group keywords like "content marketing" + "content creation" that
-  // share a strong topical word but have low raw Jaccard due to differing modifiers.
-  let meaningfulOverlap = false;
-  Array.from(set1).forEach((word) => {
-    if (word.length >= 4 && set2.has(word)) meaningfulOverlap = true;
-  });
-
-  return meaningfulOverlap ? Math.min(1, jaccard + 0.15) : jaccard;
+  return vectors;
 }
 
-/**
- * Calculate similarity between a keyword and a cluster.
- * Returns the maximum similarity to any member (single-linkage).
- */
-function clusterSimilarity(keyword: string, cluster: string[]): number {
-  let maxSim = 0;
+function cosineSimilarity(
+  a: Map<string, number>,
+  b: Map<string, number>,
+): number {
+  let dot = 0,
+    normA = 0,
+    normB = 0;
+  a.forEach((v, k) => {
+    dot += v * (b.get(k) || 0);
+    normA += v * v;
+  });
+  b.forEach((v) => {
+    normB += v * v;
+  });
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom === 0 ? 0 : dot / denom;
+}
+
+function clusterSimilarity(
+  kw: string,
+  cluster: string[],
+  vectors: Map<string, Map<string, number>>,
+): number {
+  let max = 0;
   for (const member of cluster) {
-    const sim = calculateSimilarity(keyword, member);
-    if (sim > maxSim) maxSim = sim;
+    const a = vectors.get(kw);
+    const b = vectors.get(member);
+    if (a && b) {
+      const s = cosineSimilarity(a, b);
+      if (s > max) max = s;
+    }
   }
-  return maxSim;
+  return max;
 }
 
-/**
- * Cluster keywords using greedy single-linkage agglomerative clustering.
- * Keywords are assigned to the best matching existing cluster, or start
- * a new one if no cluster exceeds the similarity threshold.
- */
 export function clusterKeywords(
   keywords: string[],
-  threshold: number = 0.25
+  threshold = 0.2,
 ): string[][] {
   if (keywords.length === 0) return [];
   if (keywords.length === 1) return [keywords];
 
+  const vectors = buildTfIdf(keywords);
   const clusters: string[][] = [];
   const assigned = new Set<number>();
 
-  // Sort keywords by length (longer first) for better seed selection
-  const sortedIndices = keywords
-    .map((_, i) => i)
-    .sort((a, b) => keywords[b].length - keywords[a].length);
+  const sorted = [...keywords].sort(
+    (a, b) => tokenize(b).length - tokenize(a).length,
+  );
+  const indices = sorted.map((kw) => keywords.indexOf(kw));
 
-  for (const i of sortedIndices) {
+  for (const i of indices) {
     if (assigned.has(i)) continue;
+    const kw = keywords[i];
 
-    // Try to find the best existing cluster for this keyword
-    let bestClusterIdx = -1;
-    let bestSim = 0;
+    let bestIdx = -1,
+      bestSim = 0;
     for (let c = 0; c < clusters.length; c++) {
-      const sim = clusterSimilarity(keywords[i], clusters[c]);
+      const sim = clusterSimilarity(kw, clusters[c], vectors);
       if (sim > bestSim) {
         bestSim = sim;
-        bestClusterIdx = c;
+        bestIdx = c;
       }
     }
 
-    if (bestSim >= threshold && bestClusterIdx >= 0) {
-      clusters[bestClusterIdx].push(keywords[i]);
+    if (bestSim >= threshold && bestIdx >= 0) {
+      clusters[bestIdx].push(kw);
       assigned.add(i);
     } else {
-      // Start a new cluster
-      const cluster: string[] = [keywords[i]];
+      const cluster: string[] = [kw];
       assigned.add(i);
-
-      // Pull in remaining unassigned keywords
-      for (const j of sortedIndices) {
-        if (i === j || assigned.has(j)) continue;
-        const sim = clusterSimilarity(keywords[j], cluster);
+      for (const j of indices) {
+        if (assigned.has(j)) continue;
+        const sim = clusterSimilarity(keywords[j], cluster, vectors);
         if (sim >= threshold) {
           cluster.push(keywords[j]);
           assigned.add(j);
         }
       }
-
       clusters.push(cluster);
     }
   }
 
-  // Sort clusters by size (largest first)
   return clusters.sort((a, b) => b.length - a.length);
 }
